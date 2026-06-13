@@ -1,10 +1,23 @@
 ﻿<Project Sdk="WixToolset.Sdk/4.0.5">
   <PropertyGroup>
-    <IncludeSearchPaths>
-    </IncludeSearchPaths>
-    <Configurations>Release</Configurations>
-    <Platforms>x64</Platforms>
-  </PropertyGroup>
+  <IncludeSearchPaths>
+  </IncludeSearchPaths>
+  <Configurations>Release</Configurations>
+  <Platforms>x64</Platforms>
+  
+  <!-- Add these preprocessor variables -->
+  <DefineConstants>
+    Product=iModuloDesk;
+    Version=1.0.0.0;
+    Manufacturer=iModulo;
+    UpgradeCode={YOUR-GUID-HERE};
+    Description=iModulo Remote Desktop;
+    RegKeyRoot=Software\iModulo\iModuloDesk;
+    ProductLower=imodulodesk;
+    BuildDate=$([System.DateTime]::Now.ToString('yyyy-MM-dd'));
+    BuildDir=..\Build\Output
+  </DefineConstants>
+</PropertyGroup>
   <ItemGroup>
     <Content Include="Includes.wxi" />
     <Content Include="Resources\icon.ico" />
