@@ -3947,7 +3947,14 @@ pub fn is_x64() -> bool {
 pub fn try_kill_rustdesk_main_window_process() -> ResultType<()> {
     // Kill rustdesk.exe without extra arg, should only be called by --server
     // We can find the exact process which occupies the ipc, see more from https://github.com/winsiderss/systeminformer
-    let app_name = crate::get_app_name().to_lowercase();
+    // iModulo: match by the actual running exe basename (binary renamed to iModulo.exe);
+    // get_app_name() stays "rustdesk" as internal identity, so it can't be used here.
+    let app_name = std::env::current_exe()
+        .ok()
+        .as_ref()
+        .and_then(|p| p.file_stem())
+        .map(|s| s.to_string_lossy().to_lowercase())
+        .unwrap_or_else(|| crate::get_app_name().to_lowercase());
     log::info!("try kill main window process");
     use hbb_common::sysinfo::System;
     let mut sys = System::new();

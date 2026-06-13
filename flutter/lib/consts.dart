@@ -4,6 +4,10 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 
+// iModulo: user-facing display name. Internal identity (APP_NAME, config dir,
+// service, registry) stays "RustDesk"; this only changes shown text.
+const String kAppDisplayName = "iModulo";
+
 const int kMaxVirtualDisplayCount = 4;
 const int kAllVirtualDisplay = -1;
 

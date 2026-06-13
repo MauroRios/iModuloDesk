@@ -912,7 +912,8 @@ pub fn get_langs() -> String {
 
 #[inline]
 pub fn video_save_directory(root: bool) -> String {
-    let appname = crate::get_app_name();
+    // iModulo: use display name for the recording subfolder (internal identity stays RustDesk).
+    let appname = crate::get_app_display_name();
     // ui process can show it correctly Once vidoe process created it.
     let try_create = |path: &std::path::Path| {
         if !path.exists() {

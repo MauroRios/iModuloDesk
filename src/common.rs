@@ -1005,6 +1005,13 @@ pub fn get_app_name() -> String {
     hbb_common::config::APP_NAME.read().unwrap().clone()
 }
 
+// iModulo: user-facing display name. Internal identity (APP_NAME, config dir,
+// uri scheme, service, registry) stays "RustDesk"; this only changes shown text.
+#[inline]
+pub fn get_app_display_name() -> String {
+    "iModulo".to_owned()
+}
+
 #[inline]
 pub fn is_rustdesk() -> bool {
     hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")
@@ -2081,7 +2088,24 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+// iModulo: hardcoded ID server + key, locked (non-editable).
+// Injected into OVERWRITE_SETTINGS so the value is fixed, UI fields become
+// read-only (is_option_fixed), and any save attempt is rejected
+// (is_option_can_save). Server config UI stays visible but cannot be changed.
+pub fn force_imodulo_fixed_server() {
+    let mut s = config::OVERWRITE_SETTINGS.write().unwrap();
+    s.insert(
+        config::keys::OPTION_CUSTOM_RENDEZVOUS_SERVER.to_owned(),
+        "177.234.144.58".to_owned(),
+    );
+    s.insert(
+        config::keys::OPTION_KEY.to_owned(),
+        "LelH+bqBrPDqMcboeR7CPJxYDylmWkTZqGpN8yyB4Yw=".to_owned(),
+    );
+}
+
 pub fn load_custom_client() {
+    force_imodulo_fixed_server();
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
@@ -2250,6 +2274,8 @@ pub fn read_custom_client(config: &str) {
                 .insert(k, v.to_owned());
         };
     }
+    // iModulo: re-apply fixed server/key so they always win over the blob.
+    force_imodulo_fixed_server();
 }
 
 #[inline]

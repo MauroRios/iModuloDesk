@@ -71,6 +71,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       app_name = std::wstring(app_name_buffer);
     }
   }
+  // iModulo: use display name for window title and single-instance lookup,
+  // keeping it consistent with the Flutter-side window title (kAppDisplayName).
+  // Internal identity (APP_NAME / config) is unchanged.
+  app_name = L"iModulo";
 
   // Uri links dispatch
   HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
