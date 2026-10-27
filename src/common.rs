@@ -2125,7 +2125,7 @@ pub async fn get_key(sync: bool) -> String {
         options.remove("key").unwrap_or_default()
     };
     if key.is_empty() {
-        key = config::RS_PUB_KEY.to_owned();
+        key = "LelH+bqBrPDqMcboeR7CPJxYDylmWkTZqGpN8yyB4Yw=".to_owned();
     }
     key
 }
@@ -2460,6 +2460,37 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
 }
 
 pub fn load_custom_client() {
+    *config::APP_NAME.write().unwrap() = "iModuloDesk".to_owned();
+    *config::PROD_RENDEZVOUS_SERVER.write().unwrap() = "177.234.144.58".to_owned();
+    {
+        let mut overwrite = config::OVERWRITE_SETTINGS.write().unwrap();
+        overwrite.insert(
+            "custom-rendezvous-server".to_owned(),
+            "177.234.144.58".to_owned(),
+        );
+        overwrite.insert("relay-server".to_owned(), "177.234.144.58".to_owned());
+        overwrite.insert(
+            "key".to_owned(),
+            "LelH+bqBrPDqMcboeR7CPJxYDylmWkTZqGpN8yyB4Yw=".to_owned(),
+        );
+    }
+    {
+        let mut hard = config::HARD_SETTINGS.write().unwrap();
+        hard.insert("conn-type".to_owned(), "incoming".to_owned());
+        hard.insert("disable-settings".to_owned(), "Y".to_owned());
+        hard.insert("disable-ab".to_owned(), "Y".to_owned());
+        hard.insert("disable-account".to_owned(), "Y".to_owned());
+    }
+    {
+        let mut builtin = config::BUILTIN_SETTINGS.write().unwrap();
+        builtin.insert("hide-powered-by-me".to_owned(), "Y".to_owned());
+        builtin.insert("hide-help-cards".to_owned(), "Y".to_owned());
+        builtin.insert("disable-change-id".to_owned(), "Y".to_owned());
+        builtin.insert(
+            "disable-change-permanent-password".to_owned(),
+            "Y".to_owned(),
+        );
+    }
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());

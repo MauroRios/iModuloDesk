@@ -95,6 +95,8 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         child: Scaffold(
             backgroundColor: Theme.of(context).colorScheme.background,
             body: DesktopTab(
+              showTitle: true,
+              showMaximize: !bind.isIncomingOnly(),
               controller: tabController,
               tail: Offstage(
                 offstage: bind.isIncomingOnly() || bind.isDisableSettings(),
