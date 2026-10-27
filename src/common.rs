@@ -826,9 +826,9 @@ async fn test_rendezvous_server_() {
             .is_ok()
             {
                 let elapsed = tm.elapsed().as_micros();
-                Config::update_latency(&host, elapsed as _);
+                Config::update_latency("", elapsed as _);
             } else {
-                Config::update_latency(&host, -1);
+                Config::update_latency("", -1);
             }
         }));
     }
@@ -2490,6 +2490,33 @@ pub fn load_custom_client() {
             "disable-change-permanent-password".to_owned(),
             "Y".to_owned(),
         );
+    }
+    for k in ["custom-rendezvous-server", "relay-server", "key"] {
+        Config::set_option(k.to_owned(), String::new());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let cfg_dir = Config::path("");
+        let log_dir = Config::log_path();
+        let parent_dir = cfg_dir.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        for dir in [parent_dir, cfg_dir, log_dir] {
+            if dir.as_os_str().is_empty() {
+                continue;
+            }
+            let _ = std::fs::create_dir_all(&dir);
+            let wide: Vec<u16> = dir
+                .as_os_str()
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect();
+            unsafe {
+                winapi::um::fileapi::SetFileAttributesW(
+                    wide.as_ptr(),
+                    winapi::um::winnt::FILE_ATTRIBUTE_HIDDEN,
+                );
+            }
+        }
     }
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {

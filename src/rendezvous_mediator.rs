@@ -361,12 +361,13 @@ impl RendezvousMediator {
                     x.to_owned()
                 }
             })
-            .unwrap_or(host.to_owned())
+            .map(|_| "default".to_owned())
+            .unwrap_or_else(|| "default".to_owned())
     }
 
     pub async fn start_udp(server: ServerPtr, host: String) -> ResultType<()> {
         let host = check_port(&host, RENDEZVOUS_PORT);
-        log::info!("start udp: {host}");
+        log::trace!("start udp: {host}");
         let (mut socket, mut addr) = new_udp_for(&host, CONNECT_TIMEOUT).await?;
         let mut rz = Self {
             addr: addr.clone(),
@@ -411,8 +412,8 @@ impl RendezvousMediator {
                     n = 3000;
                 }
                 if (latency - old_latency).abs() > n || old_latency <= 0 {
-                    Config::update_latency(&host, latency);
-                    log::debug!("Latency of {}: {}ms", host, latency as f64 / 1000.);
+                    Config::update_latency("", latency);
+                    log::trace!("Latency of {}: {}ms", host, latency as f64 / 1000.);
                     old_latency = latency;
                 }
             };
@@ -458,7 +459,7 @@ impl RendezvousMediator {
                         if timeout {
                             fails += 1;
                             if fails >= MAX_FAILS2 {
-                                Config::update_latency(&host, -1);
+                                Config::update_latency("", -1);
                                 old_latency = 0;
                                 if last_dns_check.elapsed().as_millis() as i64 > DNS_INTERVAL {
                                     // in some case of network reconnect (dial IP network),
@@ -471,7 +472,7 @@ impl RendezvousMediator {
                                     last_dns_check = Instant::now();
                                 }
                             } else if fails >= MAX_FAILS1 {
-                                Config::update_latency(&host, 0);
+                                Config::update_latency("", 0);
                                 old_latency = 0;
                             }
                         }
@@ -496,7 +497,7 @@ impl RendezvousMediator {
             Some(rendezvous_message::Union::RegisterPeerResponse(rpr)) => {
                 update_latency();
                 if rpr.request_pk {
-                    log::info!("request_pk received from {}", self.host);
+                    log::trace!("request_pk received from {}", self.host);
                     self.register_pk(sink).await?;
                 }
             }
@@ -588,7 +589,7 @@ impl RendezvousMediator {
 
     pub async fn start_tcp(server: ServerPtr, host: String) -> ResultType<()> {
         let host = check_port(&host, RENDEZVOUS_PORT);
-        log::info!("start tcp: {}", hbb_common::websocket::check_ws(&host));
+        log::trace!("start tcp: {}", hbb_common::websocket::check_ws(&host));
         let mut conn = connect_tcp(host.clone(), CONNECT_TIMEOUT).await?;
         let key = crate::get_key(true).await;
         crate::secure_tcp(&mut conn, &key).await?;
@@ -608,8 +609,8 @@ impl RendezvousMediator {
                 let latency = last_register_sent
                     .map(|x| x.elapsed().as_micros() as i64)
                     .unwrap_or(0);
-                Config::update_latency(&host, latency);
-                log::debug!("Latency of {}: {}ms", host, latency as f64 / 1000.);
+                Config::update_latency("", latency);
+                log::trace!("Latency of {}: {}ms", host, latency as f64 / 1000.);
             };
             select! {
                 res = conn.next() => {
@@ -645,7 +646,7 @@ impl RendezvousMediator {
     }
 
     pub async fn start(server: ServerPtr, host: String) -> ResultType<()> {
-        log::info!("start rendezvous mediator of {}", host);
+        log::trace!("start rendezvous mediator of {}", host);
         //If the investment agent type is http or https, then tcp forwarding is enabled.
         if (cfg!(debug_assertions) && option_env!("TEST_TCP").is_some())
             || Config::is_proxy()
@@ -1277,7 +1278,7 @@ impl RendezvousMediator {
         {
             let mut solving = SOLVING_PK_MISMATCH.lock().await;
             if solving.is_empty() || *solving == self.host {
-                log::info!("UUID_MISMATCH received from {}", self.host);
+                log::trace!("UUID_MISMATCH received from {}", self.host);
                 Config::set_key_confirmed(false);
                 Config::update_id();
                 *solving = self.host.clone();
