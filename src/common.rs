@@ -731,7 +731,7 @@ async fn test_nat_type_() -> ResultType<bool> {
         socket.send(&msg_out).await?;
         if let Some(msg_in) = get_next_nonkeyexchange_msg(&mut socket, None).await {
             if let Some(rendezvous_message::Union::TestNatResponse(tnr)) = msg_in.union {
-                log::debug!("Got nat response from {}: port={}", server, tnr.port);
+                log::trace!("Got nat response from {}: port={}", server, tnr.port);
                 if i == 0 {
                     port1 = tnr.port;
                 } else {
@@ -2475,8 +2475,9 @@ pub fn load_custom_client() {
         );
     }
     {
+        let conn_type = option_env!("IMODULODESK_CONN_TYPE").unwrap_or("incoming");
         let mut hard = config::HARD_SETTINGS.write().unwrap();
-        hard.insert("conn-type".to_owned(), "incoming".to_owned());
+        hard.insert("conn-type".to_owned(), conn_type.to_owned());
         hard.insert("disable-settings".to_owned(), "Y".to_owned());
         hard.insert("disable-ab".to_owned(), "Y".to_owned());
         hard.insert("disable-account".to_owned(), "Y".to_owned());
@@ -2500,7 +2501,16 @@ pub fn load_custom_client() {
         let cfg_dir = Config::path("");
         let log_dir = Config::log_path();
         let parent_dir = cfg_dir.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-        for dir in [parent_dir, cfg_dir, log_dir] {
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .filter(|p| {
+                std::env::var_os("LOCALAPPDATA")
+                    .map(|local| p.starts_with(local))
+                    .unwrap_or(false)
+            })
+            .unwrap_or_default();
+        for dir in [parent_dir, cfg_dir, log_dir, exe_dir] {
             if dir.as_os_str().is_empty() {
                 continue;
             }

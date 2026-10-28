@@ -826,7 +826,7 @@ impl Client {
         let rtt = start.elapsed();
         log::debug!("TCP connection establishment time used: {:?}", rtt);
         if socket.is_err() && !servers.is_empty() {
-            log::info!("try the other servers: {:?}", servers);
+            log::trace!("try the other servers: {:?}", servers);
             for server in servers {
                 let server = check_port(server, RENDEZVOUS_PORT);
                 socket = connect_tcp(&*server, CONNECT_TIMEOUT).await;
@@ -839,7 +839,7 @@ impl Client {
         } else if !contained {
             crate::refresh_rendezvous_server();
         }
-        log::info!("rendezvous server: {}", rendezvous_server);
+        log::trace!("rendezvous server: {}", rendezvous_server);
         let mut socket = socket?;
         let mut my_addr = socket.local_addr();
         let mut signed_id_pk = Vec::new();
@@ -873,7 +873,7 @@ impl Client {
             match secure_tcp_required(&mut socket, &key).await {
                 Ok(()) => exchanged = true,
                 Err(err) => {
-                    log::warn!(
+                    log::trace!(
                         "WebRTC signalling to {} cannot be encrypted, punching without WebRTC: {}",
                         rendezvous_server,
                         err
@@ -1049,7 +1049,7 @@ impl Client {
                         }
                     }
                     Some(rendezvous_message::Union::RelayResponse(rr)) => {
-                        log::info!(
+                        log::trace!(
                             "relay requested from peer, time used: {:?}, relay_server: {}",
                             start.elapsed(),
                             rr.relay_server
@@ -1353,7 +1353,7 @@ impl Client {
             bail!("Failed to connect via rendezvous server");
         }
         let time_used = start.elapsed().as_millis() as u64;
-        log::info!(
+        log::trace!(
             "{} ms used to {} punch hole, relay_server: {}, {}",
             time_used,
             punch_type,
@@ -1812,7 +1812,7 @@ impl Client {
             ipv4 = socket.local_addr().is_ipv4();
             let mut msg_out = RendezvousMessage::new();
             uuid = Uuid::new_v4().to_string();
-            log::info!(
+            log::trace!(
                 "#{} request relay attempt, id: {}, uuid: {}, relay_server: {}, secure: {}",
                 i,
                 peer,

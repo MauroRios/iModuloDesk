@@ -130,7 +130,7 @@ jobs:
           name: topmostwindow-artifacts-x64
           path: "./iModuloDesk-dist"
 
-      - name: Build single-file portable iModuloDesk.exe
+      - name: Build single-file portable iModuloDesk.exe (Client - Incoming)
         shell: bash
         run: |
           sed -i '/dpiAware/d' res/manifest.xml
@@ -141,9 +141,28 @@ jobs:
           mkdir -p ./dist
           mv ./target/release/rustdesk-portable-packer.exe ./dist/iModuloDesk.exe
 
-      - name: Upload iModuloDesk.exe (Portable Single-File)
+      - name: Build single-file portable iModuloDesk-Server.exe (Server - Outgoing)
+        shell: bash
+        run: |
+          features=$(python3 ./build.py --portable --flutter --skip-portable-pack --hwcodec --vram --print-features)
+          IMODULODESK_CONN_TYPE=outgoing cargo build --locked --features "$features" --lib --release
+          cp -f ./target/release/librustdesk.dll ./iModuloDesk-dist/librustdesk.dll
+          mv ./iModuloDesk-dist/iModuloDesk.exe ./iModuloDesk-dist/iModuloDesk-Server.exe
+          pushd ./libs/portable
+          python3 ./generate.py -f ../../iModuloDesk-dist/ -o . -e ../../iModuloDesk-dist/iModuloDesk-Server.exe
+          popd
+          mv ./target/release/rustdesk-portable-packer.exe ./dist/iModuloDesk-Server.exe
+
+      - name: Upload iModuloDesk.exe (Client Portable Single-File)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: iModuloDesk-portable-exe
           path: ./dist/iModuloDesk.exe
+          if-no-files-found: error
+
+      - name: Upload iModuloDesk-Server.exe (Server Portable Single-File)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: iModuloDesk-Server-portable-exe
+          path: ./dist/iModuloDesk-Server.exe
           if-no-files-found: error
