@@ -452,6 +452,11 @@ pub fn set_option(key: String, value: String) {
                 }
                 return;
             }
+            #[cfg(target_os = "windows")]
+            if value != "Y" {
+                let _ = crate::platform::install_service();
+                return;
+            }
         }
     } else if &key == "audio-input" {
         #[cfg(not(target_os = "ios"))]

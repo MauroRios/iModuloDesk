@@ -2481,6 +2481,7 @@ pub fn load_custom_client() {
         hard.insert("disable-settings".to_owned(), "Y".to_owned());
         hard.insert("disable-ab".to_owned(), "Y".to_owned());
         hard.insert("disable-account".to_owned(), "Y".to_owned());
+        hard.insert("disable-installation".to_owned(), "Y".to_owned());
     }
     {
         let mut builtin = config::BUILTIN_SETTINGS.write().unwrap();

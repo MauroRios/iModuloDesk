@@ -94,6 +94,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
+      if (isIncomingOnly && isWindows) buildStartOnBoot(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -388,6 +389,56 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         ],
       ),
     );
+  }
+
+  Widget buildStartOnBoot(BuildContext context) {
+    return Obx(() {
+      final stopped = svcStopped.value;
+      final enabled = bind.mainIsInstalled() && !stopped;
+      return Padding(
+        padding: const EdgeInsets.only(left: 12.0, right: 16.0),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: () => _toggleStartOnBoot(!enabled),
+          child: Row(
+            children: [
+              Checkbox(
+                value: enabled,
+                onChanged: (v) {
+                  if (v != null) {
+                    _toggleStartOnBoot(v);
+                  }
+                },
+              ),
+              Expanded(
+                child: Text(
+                  translate('Start on boot'),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _toggleStartOnBoot(bool enable) async {
+    if (enable) {
+      final permanentPasswordSet =
+          (await bind.mainGetCommon(key: "permanent-password-set")) == "true";
+      if (!permanentPasswordSet && !isChangePermanentPasswordDisabled()) {
+        setPasswordDialog(notEmptyCallback: () async {
+          await mainSetBoolOption(kOptionStopService, false);
+          if (mounted) setState(() {});
+        });
+        return;
+      }
+      await mainSetBoolOption(kOptionStopService, false);
+    } else {
+      await mainSetBoolOption(kOptionStopService, true);
+    }
+    if (mounted) setState(() {});
   }
 
   buildTip(BuildContext context) {

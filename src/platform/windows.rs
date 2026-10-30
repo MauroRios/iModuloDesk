@@ -3339,7 +3339,14 @@ pub fn try_lock_tray_single_instance() -> bool {
 pub fn uninstall_service(show_new_window: bool, _: bool) -> bool {
     log::info!("Uninstalling service...");
     let filter = format!(" /FI \"PID ne {}\"", get_current_pid());
-    let (_, _, _, exe) = get_install_info();
+    let (_, _, _, mut exe) = get_install_info();
+    if std::fs::metadata(&exe).is_err() {
+        if let Ok(cur_exe) = std::env::current_exe() {
+            if let Some(cur_exe_str) = cur_exe.to_str() {
+                exe = cur_exe_str.to_owned();
+            }
+        }
+    }
     let remove_service = match service_control_command("remove", &exe, false) {
         Ok(commands) => commands,
         Err(err) => {
@@ -3352,6 +3359,7 @@ pub fn uninstall_service(show_new_window: bool, _: bool) -> bool {
         "
     chcp 65001
     {remove_service}
+    reg delete HKEY_LOCAL_MACHINE\\Software\\{app_name}\\InstallState\\{app_name} /f
     if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\" del /f /q \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\"
     taskkill /F /IM {broker_exe}
     taskkill /F /IM {app_name}.exe{filter}
@@ -3363,6 +3371,9 @@ pub fn uninstall_service(show_new_window: bool, _: bool) -> bool {
         Config::set_option("stop-service".into(), "".into());
         log::debug!("{err}");
         return true;
+    }
+    if !is_installed() {
+        Config::set_option("stop-service".into(), "".into());
     }
     run_after_run_cmds(!show_new_window);
     std::process::exit(0);
@@ -3390,11 +3401,17 @@ fn get_install_service_commands(path: &str, exe: &str) -> ResultType<InstallComm
         "
 chcp 65001
 taskkill /F /IM {app_name}.exe{filter}
+reg add HKEY_LOCAL_MACHINE\\Software\\{app_name}\\InstallState\\{app_name} /f /v InstallLocation /t REG_SZ /d \"{path}\"
+reg add HKEY_LOCAL_MACHINE\\Software\\{app_name}\\InstallState\\{app_name} /f /v BuildDate /t REG_SZ /d \"{build_date}\"
+netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=out action=allow program=\"{exe}\" enable=yes
+netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=in action=allow program=\"{exe}\" enable=yes
+reg add HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1
 {tray_shortcut_commands}
 copy /Y \"%RUSTDESK_OUTPUT_DIR%\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\\"
 {import_config}
 {create_service}
     ",
+        build_date = crate::BUILD_DATE,
         import_config = get_import_config(exe),
         create_service = service_control_command("create-service-with-rollback", exe, false)?,
     );
@@ -3407,19 +3424,38 @@ copy /Y \"%RUSTDESK_OUTPUT_DIR%\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsof
 pub fn install_service() -> bool {
     log::info!("Installing service...");
     let _installing = crate::platform::InstallingService::new();
-    let (_, path, _, exe) = get_install_info();
+    let (_, mut path, _, mut exe) = get_install_info();
+    let was_installed = std::fs::metadata(&exe).is_ok();
+    if !was_installed {
+        if let Ok(cur_exe) = std::env::current_exe() {
+            if let Some(cur_exe_str) = cur_exe.to_str() {
+                exe = cur_exe_str.to_owned();
+                if let Some(parent) = cur_exe.parent().and_then(|p| p.to_str()) {
+                    path = parent.to_owned();
+                }
+            }
+        }
+    }
+    let cfg: Config = hbb_common::config::load_path(Config::file());
+    if !cfg.is_empty() {
+        allow_err!(hbb_common::config::store_path(Config::file(), cfg));
+    }
     Config::set_option("stop-service".into(), "".into());
     let cmds = match get_install_service_commands(&path, &exe) {
         Ok(cmds) => cmds,
         Err(err) => {
-            Config::set_option("stop-service".into(), "Y".into());
+            if was_installed {
+                Config::set_option("stop-service".into(), "Y".into());
+            }
             log::error!("Failed to prepare service installation: {err}");
             return true;
         }
     };
     crate::ipc::EXIT_RECV_CLOSE.store(false, Ordering::Relaxed);
     if let Err(err) = run_cmds(cmds, false, "install") {
-        Config::set_option("stop-service".into(), "Y".into());
+        if was_installed {
+            Config::set_option("stop-service".into(), "Y".into());
+        }
         crate::ipc::EXIT_RECV_CLOSE.store(true, Ordering::Relaxed);
         log::debug!("{err}");
         return true;
@@ -4070,7 +4106,15 @@ sc start {app_name}
 }
 
 fn run_after_run_cmds(silent: bool) {
-    let (_, _, _, exe) = get_install_info();
+    let (_, _, _, mut exe) = get_install_info();
+    let installed = std::fs::metadata(&exe).is_ok();
+    if !installed {
+        if let Ok(cur_exe) = std::env::current_exe() {
+            if let Some(cur_exe_str) = cur_exe.to_str() {
+                exe = cur_exe_str.to_owned();
+            }
+        }
+    }
     if !silent {
         log::debug!("Spawn new window");
         allow_err!(std::process::Command::new("cmd")
@@ -4078,7 +4122,7 @@ fn run_after_run_cmds(silent: bool) {
             .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW)
             .spawn());
     }
-    if Config::get_option("stop-service") != "Y" {
+    if installed && Config::get_option("stop-service") != "Y" {
         allow_err!(std::process::Command::new(&exe).arg("--tray").spawn());
     }
     std::thread::sleep(std::time::Duration::from_millis(300));
