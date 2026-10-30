@@ -2487,10 +2487,6 @@ pub fn load_custom_client() {
         builtin.insert("hide-powered-by-me".to_owned(), "Y".to_owned());
         builtin.insert("hide-help-cards".to_owned(), "Y".to_owned());
         builtin.insert("disable-change-id".to_owned(), "Y".to_owned());
-        builtin.insert(
-            "disable-change-permanent-password".to_owned(),
-            "Y".to_owned(),
-        );
     }
     for k in ["custom-rendezvous-server", "relay-server", "key"] {
         Config::set_option(k.to_owned(), String::new());

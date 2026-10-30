@@ -61,6 +61,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isIncomingOnly = bind.isIncomingOnly();
     return _buildBlock(
         child: Row(
+      mainAxisAlignment:
+          isIncomingOnly ? MainAxisAlignment.center : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildLeftPane(context),
@@ -357,7 +359,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           ),
                           onHover: (value) => refreshHover.value = value,
                         ).marginOnly(right: 8, top: 4),
-                      if (!bind.isDisableSettings())
+                      if (!isChangePermanentPasswordDisabled())
                         InkWell(
                           child: Tooltip(
                             message: translate('Change Password'),
@@ -371,8 +373,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                               ).marginOnly(right: 8, top: 4),
                             ),
                           ),
-                          onTap: () => DesktopSettingPage.switch2page(
-                              SettingsTabKey.safety),
+                          onTap: () => bind.isDisableSettings()
+                              ? setPasswordDialog()
+                              : DesktopSettingPage.switch2page(
+                                  SettingsTabKey.safety),
                           onHover: (value) => editHover.value = value,
                         ),
                     ],
@@ -913,7 +917,11 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
   final showStatusTipOnMobile =
       statusTip.isNotEmpty && !isDesktop && !isWebDesktop;
 
-  gFFI.dialogManager.show((setState, close, context) {
+  final resizeWindow = isDesktop && bind.isIncomingOnly() && isInHomePage();
+  if (resizeWindow) {
+    await windowManager.setSize(const Size(560, 480));
+  }
+  await gFFI.dialogManager.show((setState, close, context) {
     updateCanSubmit() {
       canSubmit = p0.text.trim().isNotEmpty || p1.text.trim().isNotEmpty;
     }
@@ -1123,4 +1131,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
       onCancel: close,
     );
   });
+  if (resizeWindow && isInHomePage()) {
+    await windowManager.setSize(getIncomingOnlyHomeSize());
+  }
 }
